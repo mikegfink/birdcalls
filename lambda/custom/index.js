@@ -1,106 +1,61 @@
 /* eslint-disable  func-names */
 /* eslint-disable  no-console */
+/*jshint esversion: 6 */
 
 const Alexa = require('ask-sdk-core');
-const questions = require('./questions');
+const https = require('https');
 const i18n = require('i18next');
 const sprintf = require('i18next-sprintf-postprocessor');
 
 const ANSWER_COUNT = 4;
 const GAME_LENGTH = 5;
 
-function populateGameQuestions(translatedQuestions) {
-  const gameQuestions = [];
-  const indexList = [];
-  let index = translatedQuestions.length;
-  if (GAME_LENGTH > index) {
-    throw new Error('Invalid Game Length.');
-  }
+async function httpsGet(query, callback) {
+    var options = {
+        host: 'www.xeno-canto.org',
+        //path: '/species/Crypturellus-soui',
+        path: '/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' + encodeURIComponent(query),
+        method: 'GET',
+    };
 
-  for (let i = 0; i < translatedQuestions.length; i += 1) {
-    indexList.push(i);
-  }
+    var req = https.request(options, res => {
+        res.setEncoding('utf8');
+        var responseString = "";
 
-  for (let j = 0; j < GAME_LENGTH; j += 1) {
-    const rand = Math.floor(Math.random() * index);
-    index -= 1;
+        //accept incoming data asynchronously
+        res.on('data', chunk => {
+            responseString = responseString + chunk;
+        });
 
-    const temp = indexList[index];
-    indexList[index] = indexList[rand];
-    indexList[rand] = temp;
-    gameQuestions.push(indexList[index]);
-  }
-  return gameQuestions;
-}
+        //return the data when streaming is complete
+        res.on('end', () => {
+          //let parsedString = JSON.parse(responseString);
+            //console.log('reponse from httpGet: ' + parsedString);
+            callback(responseString);
+        });
 
-function populateRoundAnswers(
-  gameQuestionIndexes,
-  correctAnswerIndex,
-  correctAnswerTargetLocation,
-  translatedQuestions
-) {
-  const answers = [];
-  const translatedQuestion = translatedQuestions[gameQuestionIndexes[correctAnswerIndex]];
-  const answersCopy = translatedQuestion[Object.keys(translatedQuestion)[0]].slice();
-  let index = answersCopy.length;
-
-  if (index < ANSWER_COUNT) {
-    throw new Error('Not enough answers for question.');
-  }
-
-  // Shuffle the answers, excluding the first element which is the correct answer.
-  for (let j = 1; j < answersCopy.length; j += 1) {
-    const rand = Math.floor(Math.random() * (index - 1)) + 1;
-    index -= 1;
-
-    const swapTemp1 = answersCopy[index];
-    answersCopy[index] = answersCopy[rand];
-    answersCopy[rand] = swapTemp1;
-  }
-
-  // Swap the correct answer into the target location
-  for (let i = 0; i < ANSWER_COUNT; i += 1) {
-    answers[i] = answersCopy[i];
-  }
-  const swapTemp2 = answers[0];
-  answers[0] = answers[correctAnswerTargetLocation];
-  answers[correctAnswerTargetLocation] = swapTemp2;
-  return answers;
-}
-
-function isAnswerSlotValid(intent) {
-  const answerSlotFilled = intent
-    && intent.slots
-    && intent.slots.Answer
-    && intent.slots.Answer.value;
-  const answerSlotIsInt = answerSlotFilled
-    && !Number.isNaN(parseInt(intent.slots.Answer.value, 10));
-  return answerSlotIsInt
-    && parseInt(intent.slots.Answer.value, 10) < (ANSWER_COUNT + 1)
-    && parseInt(intent.slots.Answer.value, 10) > 0;
+    });
+    req.end();
 }
 
 function handleUserGuess(userGaveUp, handlerInput) {
   const { requestEnvelope, attributesManager, responseBuilder } = handlerInput;
   const { intent } = requestEnvelope.request;
 
-  const answerSlotValid = isAnswerSlotValid(intent);
-
   let speechOutput = '';
   let speechOutputAnalysis = '';
 
   const sessionAttributes = attributesManager.getSessionAttributes();
   const gameQuestions = sessionAttributes.questions;
-  let correctAnswerIndex = parseInt(sessionAttributes.correctAnswerIndex, 10);
+  const gameAnswers = sessionAttributes.answers;
   let currentScore = parseInt(sessionAttributes.score, 10);
   let currentQuestionIndex = parseInt(sessionAttributes.currentQuestionIndex, 10);
-  const { correctAnswerText } = sessionAttributes;
+  const correctAnswerText = sessionAttributes.answers[currentQuestionIndex];
   const requestAttributes = attributesManager.getRequestAttributes();
   const translatedQuestions = requestAttributes.t('QUESTIONS');
 
-
-  if (answerSlotValid
-    && parseInt(intent.slots.Answer.value, 10) === sessionAttributes.correctAnswerIndex) {
+  console.log(intent.slots.Answer.value);
+  if (intent.slots.Answer.value == gameAnswers[currentQuestionIndex]) {
     currentScore += 1;
     speechOutputAnalysis = requestAttributes.t('ANSWER_CORRECT_MESSAGE');
   } else {
@@ -110,8 +65,7 @@ function handleUserGuess(userGaveUp, handlerInput) {
 
     speechOutputAnalysis += requestAttributes.t(
       'CORRECT_ANSWER_MESSAGE',
-      correctAnswerIndex,
-      correctAnswerText
+      gameAnswers[currentQuestionIndex]
     );
   }
 
@@ -129,40 +83,24 @@ function handleUserGuess(userGaveUp, handlerInput) {
       .getResponse();
   }
   currentQuestionIndex += 1;
-  correctAnswerIndex = Math.floor(Math.random() * (ANSWER_COUNT));
-  const spokenQuestion = Object.keys(translatedQuestions[gameQuestions[currentQuestionIndex]])[0];
-  const roundAnswers = populateRoundAnswers(
-    gameQuestions,
-    currentQuestionIndex,
-    correctAnswerIndex,
-    translatedQuestions
-  );
+
   const questionIndexForSpeech = currentQuestionIndex + 1;
   let repromptText = requestAttributes.t(
     'TELL_QUESTION_MESSAGE',
-    questionIndexForSpeech.toString(),
-    spokenQuestion
+    questionIndexForSpeech.toString()
   );
-
-  for (let i = 0; i < ANSWER_COUNT; i += 1) {
-    repromptText += `${i + 1}. ${roundAnswers[i]}. `;
-  }
 
   speechOutput += userGaveUp ? '' : requestAttributes.t('ANSWER_IS_MESSAGE');
   speechOutput += speechOutputAnalysis
     + requestAttributes.t('SCORE_IS_MESSAGE', currentScore.toString())
     + repromptText;
 
-  const translatedQuestion = translatedQuestions[gameQuestions[currentQuestionIndex]];
-
   Object.assign(sessionAttributes, {
     speechOutput: repromptText,
     repromptText,
     currentQuestionIndex,
-    correctAnswerIndex: correctAnswerIndex + 1,
     questions: gameQuestions,
     score: currentScore,
-    correctAnswerText: translatedQuestion[Object.keys(translatedQuestion)[0]][0]
   });
 
   return responseBuilder.speak(speechOutput)
@@ -171,51 +109,146 @@ function handleUserGuess(userGaveUp, handlerInput) {
     .getResponse();
 }
 
-function startGame(newGame, handlerInput) {
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+
+function getQuiz(numQuestions, birdCallResults) {
+  //console.log("In getQuiz");
+  var quiz = {
+    questions:[],
+    answers:[]
+  };
+  var recordings = birdCallResults['recordings'];
+  const numRecordings = recordings.length;
+  for( var i = 0; i < numRecordings; i++ ) {
+    var index = getRandomInt(numRecordings);
+    var recording = recordings[index];
+    var birdName = recording['en'];
+    if (quiz.answers.indexOf(birdName) == -1) {
+      quiz.answers.push(birdName);
+      var audio = recording['file'];
+      quiz.questions.push(audio);
+    }
+    if (quiz.questions.length >= GAME_LENGTH) {
+      break;
+    }
+  }
+  if (quiz.questions.length < GAME_LENGTH) {
+    throw("Not enough recordings.")
+  }
+  console.log("QUESTIONS:", quiz.questions, quiz.answers);
+  return quiz;
+}
+
+async function startGame(newGame, handlerInput) {
+  //console.log("Input    :", handlerInput);
   const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
   let speechOutput = newGame
     ? requestAttributes.t('NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME'))
       + requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString())
     : '';
-  const translatedQuestions = requestAttributes.t('QUESTIONS');
-  const gameQuestions = populateGameQuestions(translatedQuestions);
-  const correctAnswerIndex = Math.floor(Math.random() * (ANSWER_COUNT));
+  var query = 'canada';
+  var results;
+  var quiz;
+  var options = {
+        host: 'www.xeno-canto.org',
+        //path: '/species/Crypturellus-soui',
+        path: '/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' + encodeURIComponent(query),
+        method: 'GET',
+  };
 
-  const roundAnswers = populateRoundAnswers(
-    gameQuestions,
-    0,
-    correctAnswerIndex,
-    translatedQuestions
-  );
-  const currentQuestionIndex = 0;
-  const spokenQuestion = Object.keys(translatedQuestions[gameQuestions[currentQuestionIndex]])[0];
-  let repromptText = requestAttributes.t('TELL_QUESTION_MESSAGE', '1', spokenQuestion);
-  for (let i = 0; i < ANSWER_COUNT; i += 1) {
-    repromptText += `${i + 1}. ${roundAnswers[i]}. `;
-  }
+  const req = await https.request (options, res => {
+    res.setEncoding('utf8');
+    var responseString = "";
 
-  speechOutput += repromptText;
-  const sessionAttributes = {};
+    //accept incoming data asynchronously
+    res.on('data', chunk => {
+        responseString = responseString + chunk;
+    });
 
-  const translatedQuestion = translatedQuestions[gameQuestions[currentQuestionIndex]];
+    //return the data when streaming is complete
+    res.on('end', () => {
+      //let parsedString = JSON.parse(responseString);
+      //console.log('reponse from httpGet: ' + parsedString);
+      try {
+        results = JSON.parse(responseString);
+        quiz = getQuiz(GAME_LENGTH, results);
+        console.log('quiz: ' + quiz);
+        //Nicole
+         const gameQuestions = quiz.questions;
+         const currentQuestionIndex = 0;
+         var spokenQuestion = quiz.questions[currentQuestionIndex];
+         let repromptText = requestAttributes.t('TELL_QUESTION_MESSAGE', '1');
+         speechOutput += repromptText;
+         const sessionAttributes = {};
+         Object.assign(sessionAttributes, {
+           speechOutput: repromptText,
+           repromptText,
+           currentQuestionIndex,
+           questions: gameQuestions,
+           score: 0,
+         });
+         handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
+         console.log('speech', repromptText);
+         //spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
 
-  Object.assign(sessionAttributes, {
-    speechOutput: repromptText,
-    repromptText,
-    currentQuestionIndex,
-    correctAnswerIndex: correctAnswerIndex + 1,
-    questions: gameQuestions,
-    score: 0,
-    correctAnswerText: translatedQuestion[Object.keys(translatedQuestion)[0]][0]
+      //end Nicole
+      } catch( e ) {
+        return handlerInput.responseBuilder
+          .speak('Sorry, I couldn\'t generate questions for that area. Please say again.')
+          .reprompt('Sorry, I couldn\'t generate questions for that area. Please say again.')
+          .getResponse();
+      }
+    });
+
   });
-
-  handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
-
+  req.end();
+  console.log('end of function. i sad.');
   return handlerInput.responseBuilder
-    .speak(speechOutput)
-    .reprompt(repromptText)
-    .withSimpleCard(requestAttributes.t('GAME_NAME'), repromptText)
-    .getResponse();
+        .speak('hi there')
+        .reprompt('reprompting')
+        // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
+        //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
+        .getResponse();
+
+  // quiz = getQuiz(GAME_LENGTH, results);
+  //Nicole debugging
+  // console.log('quiz: ' + quiz);
+  // const gameQuestions = quiz.questions;
+  // const currentQuestionIndex = 0;
+  // var spokenQuestion = quiz.questions[currentQuestionIndex];
+  // let repromptText = requestAttributes.t('TELL_QUESTION_MESSAGE', '1');
+  // speechOutput += repromptText;
+  // const sessionAttributes = {};
+  // Object.assign(sessionAttributes, {
+  //   speechOutput: repromptText,
+  //   repromptText,
+  //   currentQuestionIndex,
+  //   questions: gameQuestions,
+  //   score: 0,
+  //   });
+
+  // handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
+  // console.log('speech', repromptText);
+  // //spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
+  // return handlerInput.responseBuilder
+  //   .speak('hi there')
+  //   .reprompt('reprompting')
+  //     // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
+  //   //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
+  //   .getResponse();
+
+
+
+    //return handlerInput.responseBuilder
+    //  .speak(speechOutput)
+    //  .reprompt(repromptText)
+      // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
+     // .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
+    //  .withSimpleCard(requestAttributes.t('GAME_NAME'), repromptText)
+    //  .getResponse();
+
 }
 
 function helpTheUser(newGame, handlerInput) {
@@ -233,9 +266,8 @@ function helpTheUser(newGame, handlerInput) {
 const languageString = {
   en: {
     translation: {
-      QUESTIONS: questions.QUESTIONS_EN_US,
-      GAME_NAME: 'Reindeer Trivia',
-      HELP_MESSAGE: 'I will ask you %s multiple choice questions. Respond with the number of the answer. For example, say one, two, three, or four. To start a new game at any time, say, start game. ',
+      GAME_NAME: 'Bird Call Quiz',
+      HELP_MESSAGE: 'I play you %s bird calls. Respond with the name of the bird. For example, say robin or american robin. To start a new game at any time, say, start game. ',
       REPEAT_QUESTION_MESSAGE: 'To repeat the last question, say, repeat. ',
       ASK_MESSAGE_START: 'Would you like to start playing?',
       HELP_REPROMPT: 'To give an answer to a question, respond with the number of the answer. ',
@@ -251,50 +283,12 @@ const languageString = {
       ANSWER_WRONG_MESSAGE: 'wrong. ',
       CORRECT_ANSWER_MESSAGE: 'The correct answer is %s: %s. ',
       ANSWER_IS_MESSAGE: 'That answer is ',
-      TELL_QUESTION_MESSAGE: 'Question %s. %s ',
+      TELL_QUESTION_MESSAGE: 'Question %s.',
       GAME_OVER_MESSAGE: 'You got %s out of %s questions correct. Thank you for playing!',
       SCORE_IS_MESSAGE: 'Your score is %s. '
     },
   },
-  'en-US': {
-    translation: {
-      QUESTIONS: questions.QUESTIONS_EN_US,
-      GAME_NAME: 'American Reindeer Trivia'
-    },
-  },
-  'en-GB': {
-    translation: {
-      QUESTIONS: questions.QUESTIONS_EN_GB,
-      GAME_NAME: 'British Reindeer Trivia'
-    },
-  },
-  de: {
-    translation: {
-      QUESTIONS: questions.QUESTIONS_DE_DE,
-      GAME_NAME: 'Wissenswertes über Rentiere in Deutsch',
-      HELP_MESSAGE: 'Ich stelle dir %s Multiple-Choice-Fragen. Antworte mit der Zahl, die zur richtigen Antwort gehört. Sage beispielsweise eins, zwei, drei oder vier. Du kannst jederzeit ein neues Spiel beginnen, sage einfach „Spiel starten“. ',
-      REPEAT_QUESTION_MESSAGE: 'Wenn die letzte Frage wiederholt werden soll, sage „Wiederholen“ ',
-      ASK_MESSAGE_START: 'Möchten Sie beginnen?',
-      HELP_REPROMPT: 'Wenn du eine Frage beantworten willst, antworte mit der Zahl, die zur richtigen Antwort gehört. ',
-      STOP_MESSAGE: 'Möchtest du weiterspielen?',
-      CANCEL_MESSAGE: 'OK, dann lass uns bald mal wieder spielen.',
-      NO_MESSAGE: 'OK, spielen wir ein andermal. Auf Wiedersehen!',
-      TRIVIA_UNHANDLED: 'Sagt eine Zahl beispielsweise zwischen 1 und %s',
-      HELP_UNHANDLED: 'Sage ja, um fortzufahren, oder nein, um das Spiel zu beenden.',
-      START_UNHANDLED: 'Du kannst jederzeit ein neues Spiel beginnen, sage einfach „Spiel starten“.',
-      NEW_GAME_MESSAGE: 'Willkommen bei %s. ',
-      WELCOME_MESSAGE: 'Ich stelle dir %s Fragen und du versuchst, so viele wie möglich richtig zu beantworten. Sage einfach die Zahl, die zur richtigen Antwort passt. Fangen wir an. ',
-      ANSWER_CORRECT_MESSAGE: 'Richtig. ',
-      ANSWER_WRONG_MESSAGE: 'Falsch. ',
-      CORRECT_ANSWER_MESSAGE: 'Die richtige Antwort ist %s: %s. ',
-      ANSWER_IS_MESSAGE: 'Diese Antwort ist ',
-      TELL_QUESTION_MESSAGE: 'Frage %s. %s ',
-      GAME_OVER_MESSAGE: 'Du hast %s von %s richtig beantwortet. Danke fürs Mitspielen!',
-      SCORE_IS_MESSAGE: 'Dein Ergebnis ist %s. '
-    },
-  },
 };
-
 
 const LocalizationInterceptor = {
   process(handlerInput) {
@@ -320,8 +314,88 @@ const LaunchRequest = {
       || (request.type === 'IntentRequest'
         && request.intent.name === 'AMAZON.StartOverIntent');
   },
-  handle(handlerInput) {
-    return startGame(true, handlerInput);
+  async handle(handlerInput) {
+    // Need to await/async/promise
+      //console.log("Input    :", handlerInput);
+    const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+    let speechOutput = true
+      ? requestAttributes.t('NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME'))
+        + requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString())
+      : '';
+    var query = 'canada';
+    var results;
+    var quiz;
+    var options = {
+          host: 'www.xeno-canto.org',
+          //path: '/species/Crypturellus-soui',
+          path: '/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' + encodeURIComponent(query),
+          //method: 'GET',
+    };
+
+    const req = await https.get(options, res => {
+      res.setEncoding('utf8');
+      var responseString = "";
+
+      //accept incoming data asynchronously
+      res.on('data', chunk => {
+          responseString = responseString + chunk;
+      });
+
+      //return the data when streaming is complete
+      res.on('end', () => {
+          //let parsedString = JSON.parse(responseString);
+          //console.log('reponse from httpGet: ' + parsedString);
+        try {
+          results = JSON.parse(responseString);
+          quiz = getQuiz(GAME_LENGTH, results);
+            console.log('quiz: ' + quiz);
+          //Nicole
+          const gameQuestions = quiz.questions;
+          const currentQuestionIndex = 0;
+          var spokenQuestion = quiz.questions[currentQuestionIndex];
+          let repromptText = requestAttributes.t('TELL_QUESTION_MESSAGE', '1');
+          speechOutput += repromptText;
+          const sessionAttributes = {};
+          Object.assign(sessionAttributes, {
+            speechOutput: repromptText,
+            repromptText,
+            currentQuestionIndex,
+            questions: gameQuestions,
+            score: 0,
+          });
+          handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
+          console.log('speech', repromptText);
+          //spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
+          return handlerInput.responseBuilder
+              .speak('hi there')
+              .reprompt('reprompting')
+              // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
+              //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
+              .getResponse();
+
+        //end Nicole
+        } catch( e ) {
+          return handlerInput.responseBuilder
+            .speak('Sorry, I couldn\'t generate questions for that area. Please say again.')
+            .reprompt('Sorry, I couldn\'t generate questions for that area. Please say again.')
+            .getResponse();
+        }
+      });
+
+    });
+    //setTimeout(console.log('waiting'), 4000);
+    //req.end();
+    console.log('end of function. i sad.');
+      //var spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
+      //return handlerInput.responseBuilder
+      //  .speak('hi there')
+      //  .reprompt('reprompting')
+        // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
+      //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
+      //  .getResponse();
+      //return await startGame(true, handlerInput);
+      //setTimeout(console.log('sleeping'),3000);
+      //return response;
   },
 };
 
@@ -397,7 +471,10 @@ const RepeatIntent = {
   },
   handle(handlerInput) {
     const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
-    return handlerInput.responseBuilder.speak(sessionAttributes.speechOutput)
+    const currQIndex = sessionAttributes.currentQuestionIndex;
+    return handlerInput.responseBuilder
+      .addAudioPlayerPlayDirective(sessionAttributes.questions[currQIndex])
+      .speak(sessionAttributes.speechOutput)
       .reprompt(sessionAttributes.repromptText)
       .getResponse();
   },
@@ -408,7 +485,7 @@ const YesIntent = {
     return handlerInput.requestEnvelope.request.type === 'IntentRequest'
         && handlerInput.requestEnvelope.request.intent.name === 'AMAZON.YesIntent';
   },
-  handle(handlerInput) {
+  async handle(handlerInput) {
     const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
     if (sessionAttributes.questions) {
       return handlerInput.responseBuilder.speak(sessionAttributes.speechOutput)
@@ -418,7 +495,6 @@ const YesIntent = {
     return startGame(false, handlerInput);
   },
 };
-
 
 const StopIntent = {
   canHandle(handlerInput) {
