@@ -13,6 +13,8 @@
     "ask-sdk-core": "^2.0.7",
     "ask-sdk-model": "^1.0.0",
     "i18next": "^10.6.0",
-    "i18next-sprintf-postprocessor": "^0.2.2"
+    "i18next-sprintf-postprocessor": "^0.2.2",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
   }
 }
