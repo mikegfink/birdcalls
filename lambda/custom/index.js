@@ -11,35 +11,6 @@ const requestPromise = require('request-promise');
 const ANSWER_COUNT = 4;
 const GAME_LENGTH = 5;
 
-async function httpsGet(query, callback) {
-    var options = {
-        host: 'www.xeno-canto.org',
-        //path: '/species/Crypturellus-soui',
-        path: '/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' +
-            encodeURIComponent(query),
-        method: 'GET',
-    };
-
-    var req = https.request(options, res => {
-        res.setEncoding('utf8');
-        var responseString = "";
-
-        //accept incoming data asynchronously
-        res.on('data', chunk => {
-            responseString = responseString + chunk;
-        });
-
-        //return the data when streaming is complete
-        res.on('end', () => {
-            //let parsedString = JSON.parse(responseString);
-            //console.log('reponse from httpGet: ' + parsedString);
-            callback(responseString);
-        });
-
-    });
-    req.end();
-}
-
 function handleUserGuess(userGaveUp, handlerInput) {
     const {
         requestEnvelope, attributesManager, responseBuilder
@@ -225,44 +196,6 @@ async function startGame(newGame, handlerInput) {
         // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
         //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
         .getResponse();
-
-    // quiz = getQuiz(GAME_LENGTH, results);
-    //Nicole debugging
-    // console.log('quiz: ' + quiz);
-    // const gameQuestions = quiz.questions;
-    // const currentQuestionIndex = 0;
-    // var spokenQuestion = quiz.questions[currentQuestionIndex];
-    // let repromptText = requestAttributes.t('TELL_QUESTION_MESSAGE', '1');
-    // speechOutput += repromptText;
-    // const sessionAttributes = {};
-    // Object.assign(sessionAttributes, {
-    //   speechOutput: repromptText,
-    //   repromptText,
-    //   currentQuestionIndex,
-    //   questions: gameQuestions,
-    //   score: 0,
-    //   });
-
-    // handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
-    // console.log('speech', repromptText);
-    // //spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
-    // return handlerInput.responseBuilder
-    //   .speak('hi there')
-    //   .reprompt('reprompting')
-    //     // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
-    //   //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
-    //   .getResponse();
-
-
-
-    //return handlerInput.responseBuilder
-    //  .speak(speechOutput)
-    //  .reprompt(repromptText)
-    // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
-    // .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
-    //  .withSimpleCard(requestAttributes.t('GAME_NAME'), repromptText)
-    //  .getResponse();
-
 }
 
 function helpTheUser(newGame, handlerInput) {
@@ -323,304 +256,286 @@ const LocalizationInterceptor = {
 };
 
 const LaunchRequest = {
-        canHandle(handlerInput) {
-                const {
-                    request
-                } = handlerInput.requestEnvelope;
+    canHandle(handlerInput) {
+            const {
+                request
+            } = handlerInput.requestEnvelope;
 
-                return request.type === 'LaunchRequest' || (request.type ===
-                    'IntentRequest' && request.intent.name ===
-                    'AMAZON.StartOverIntent');
-            },
-            async handle(handlerInput) {
-                // Need to await/async/promise
-                //console.log("Input    :", handlerInput);
-                const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
-                let speechOutput = true ? requestAttributes.t(
-                        'NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME')) +
-                    requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString()) :
-                    '';
-                var query = 'canada';
-                var results;
-                var quiz;
-                var options = {
-                    host: 'www.xeno-canto.org',
-                    //path: '/species/Crypturellus-soui',
-                    uri: 'https://www.xeno-canto.org/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' +
-                        encodeURIComponent(query),
-                    method: 'GET',
-                    resolveWithFullResponse: true
-                };
-
-                const req = await requestPromise(options)
-                    .then(function(response) {
-                            console.log(response)
-                            try {
-                                results = JSON.parse(responseString);
-                                quiz = getQuiz(GAME_LENGTH, results);
-                                console.log('quiz: ' + quiz);
-                                //Nicole
-                                const gameQuestions = quiz.questions;
-                                const currentQuestionIndex = 0;
-                                var spokenQuestion = quiz.questions[
-                                    currentQuestionIndex];
-                                let repromptText = requestAttributes.t(
-                                    'TELL_QUESTION_MESSAGE', '1');
-                                speechOutput += repromptText;
-                                const sessionAttributes = {};
-                                Object.assign(sessionAttributes, {
-                                    speechOutput: repromptText,
-                                    repromptText,
-                                    currentQuestionIndex,
-                                    questions: gameQuestions,
-                                    score: 0,
-                                });
-                                handlerInput.attributesManager.setSessionAttributes(
-                                    sessionAttributes);
-                                console.log('speech', repromptText);
-                                //spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
-                                return handlerInput.responseBuilder
-                                    .speak('hi there')
-                                    .reprompt('reprompting')
-                                    // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
-                                    //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
-                                    .getResponse();
-                            })
-                        .catch(function(error) {
-                            console.log(error);
-                            return handlerInput.responseBuilder
-                                .speak(
-                                    'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                                )
-                                .reprompt(
-                                    'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                                )
-                                .getResponse();
-                        });
-                        // res.setEncoding('utf8');
-                        // var responseString = "";
-                        //
-                        // //accept incoming data asynchronously
-                        // res.on('data', chunk => {
-                        //     responseString = responseString + chunk;
-                        // });
-                        //setTimeout(console.log('waiting'), 4000);
-                        //req.end();
-                        console.log('end of function. i sad.');
-                        //var spokenQuestion = 'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
-                        //return handlerInput.responseBuilder
-                        //  .speak('hi there')
-                        //  .reprompt('reprompting')
-                        // playBehavior: interfaces.audioplayer.PlayBehavior, url: string, token: string, offsetInMilliseconds: number, expectedPreviousToken?: string, audioItemMetadata? : AudioItemMetadata)
-                        //  .addAudioPlayerPlayDirective("REPLACE_ALL", spokenQuestion, 'token', 0)
-                        //  .getResponse();
-                        //return await startGame(true, handlerInput);
-                        //setTimeout(console.log('sleeping'),3000);
-                        //return response;
-                    }
+            return request.type === 'LaunchRequest' || (request.type ===
+                'IntentRequest' && request.intent.name ===
+                'AMAZON.StartOverIntent');
+        },
+        async handle() { //handlerInput) {
+            // Need to await/async/promise
+            //console.log("Input    :", handlerInput);
+            // const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            // let speechOutput = true ? requestAttributes.t(
+            // 'NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME')) +
+            // requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString()) :
+            // '';
+            var query = 'canada';
+            var results;
+            var quiz;
+            var options = {
+                host: 'www.xeno-canto.org',
+                //path: '/species/Crypturellus-soui',
+                uri: 'https://www.xeno-canto.org/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' +
+                    encodeURIComponent(query),
+                method: 'GET',
+                resolveWithFullResponse: true
             };
 
-
-        const HelpIntent = {
-            canHandle(handlerInput) {
-                    const {
-                        request
-                    } = handlerInput.requestEnvelope;
-
-                    return request.type === 'IntentRequest' && request.intent
-                        .name === 'AMAZON.HelpIntent';
-                },
-                handle(handlerInput) {
-                    const sessionAttributes = handlerInput.attributesManager
-                        .getSessionAttributes();
-
-                    const newGame = !(sessionAttributes.questions);
-                    return helpTheUser(newGame, handlerInput);
-                },
-        };
-
-        const UnhandledIntent = {
-            canHandle() {
-                    return true;
-                },
-                handle(handlerInput) {
-                    const sessionAttributes = handlerInput.attributesManager
-                        .getSessionAttributes();
-                    const requestAttributes = handlerInput.attributesManager
-                        .getRequestAttributes();
-                    if (Object.keys(sessionAttributes).length === 0) {
-                        const speechOutput = requestAttributes.t(
-                            'START_UNHANDLED');
-                        return handlerInput.attributesManager
-                            .speak(speechOutput)
-                            .reprompt(speechOutput)
+            var req = requestPromise(options)
+                .then(function(response) {
+                        console.log(response)
+                        try {
+                            results = JSON.parse(response);
+                            quiz = getQuiz(GAME_LENGTH, results);
+                            console.log('quiz: ' + quiz);
+                            // Nicole
+                            const gameQuestions = quiz.questions;
+                            const currentQuestionIndex = 0;
+                            var spokenQuestion = quiz.questions[
+                                currentQuestionIndex];
+                            let repromptText = requestAttributes.t(
+                                'TELL_QUESTION_MESSAGE', '1');
+                            speechOutput += repromptText;
+                            const sessionAttributes = {};
+                            Object.assign(sessionAttributes, {
+                                speechOutput: repromptText,
+                                repromptText,
+                                currentQuestionIndex,
+                                questions: gameQuestions,
+                                score: 0,
+                            });
+                            handlerInput.attributesManager.setSessionAttributes(
+                                sessionAttributes);
+                            console.log('speech', repromptText);
+                            spokenQuestion =
+                                'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
+                            return handlerInput.responseBuilder
+                                .speak('hi there')
+                                .reprompt('reprompting')
+                            playBehavior: interfaces.audioplayer.PlayBehavior,
+                                url: string, token: string,
+                                offsetInMilliseconds: number,
+                                expectedPreviousToken ? : string,
+                                audioItemMetadata ? : AudioItemMetadata)
+                        .addAudioPlayerPlayDirective("REPLACE_ALL",
+                                spokenQuestion, 'token', 0)
                             .getResponse();
-                    } else if (sessionAttributes.questions) {
-                        const speechOutput = requestAttributes.t(
-                            'TRIVIA_UNHANDLED', ANSWER_COUNT.toString()
-                        );
-                        return handlerInput.attributesManager
-                            .speak(speechOutput)
-                            .reprompt(speechOutput)
-                            .getResponse();
-                    }
-                    const speechOutput = requestAttributes.t(
-                        'HELP_UNHANDLED');
-                    return handlerInput.attributesManager.speak(
-                        speechOutput).reprompt(speechOutput).getResponse();
-                },
-        };
-
-        const SessionEndedRequest = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'SessionEndedRequest';
-                },
-                handle(handlerInput) {
-                    console.log(
-                        `Session ended with reason: ${handlerInput.requestEnvelope.request.reason}`
-                    );
-
-                    return handlerInput.responseBuilder.getResponse();
-                },
-        };
-
-        const AnswerIntent = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'IntentRequest' && (handlerInput.requestEnvelope.request
-                            .intent.name === 'AnswerIntent' || handlerInput
-                            .requestEnvelope.request.intent.name ===
-                            'DontKnowIntent');
-                },
-                handle(handlerInput) {
-                    if (handlerInput.requestEnvelope.request.intent.name ===
-                        'AnswerIntent') {
-                        return handleUserGuess(false, handlerInput);
-                    }
-                    return handleUserGuess(true, handlerInput);
-                },
-        };
-
-        const RepeatIntent = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'IntentRequest' && handlerInput.requestEnvelope.request
-                        .intent.name === 'AMAZON.RepeatIntent';
-                },
-                handle(handlerInput) {
-                    const sessionAttributes = handlerInput.attributesManager
-                        .getSessionAttributes();
-                    const currQIndex = sessionAttributes.currentQuestionIndex;
-                    return handlerInput.responseBuilder
-                        .addAudioPlayerPlayDirective(sessionAttributes.questions[
-                            currQIndex])
-                        .speak(sessionAttributes.speechOutput)
-                        .reprompt(sessionAttributes.repromptText)
-                        .getResponse();
-                },
-        };
-
-        const YesIntent = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'IntentRequest' && handlerInput.requestEnvelope.request
-                        .intent.name === 'AMAZON.YesIntent';
-                },
-                async handle(handlerInput) {
-                    const sessionAttributes = handlerInput.attributesManager
-                        .getSessionAttributes();
-                    if (sessionAttributes.questions) {
-                        return handlerInput.responseBuilder.speak(
-                                sessionAttributes.speechOutput)
-                            .reprompt(sessionAttributes.repromptText)
+                    } catch (e) {
+                        return handlerInput.responseBuilder
+                            .speak(
+                                'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                            )
+                            .reprompt(
+                                'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                            )
                             .getResponse();
                     }
-                    return startGame(false, handlerInput);
-                },
-        };
+                })
+        .catch(function(error) {
+            console.log(error);
+            return handlerInput.responseBuilder
+                .speak(
+                    'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                )
+                .reprompt(
+                    'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                )
+                .getResponse();
+        });
+}
+};
 
-        const StopIntent = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'IntentRequest' && handlerInput.requestEnvelope.request
-                        .intent.name === 'AMAZON.StopIntent';
-                },
-                handle(handlerInput) {
-                    const requestAttributes = handlerInput.attributesManager
-                        .getRequestAttributes();
-                    const speechOutput = requestAttributes.t('STOP_MESSAGE');
 
-                    return handlerInput.responseBuilder.speak(speechOutput)
-                        .reprompt(speechOutput)
-                        .getResponse();
-                },
-        };
+const HelpIntent = {
+    canHandle(handlerInput) {
+            const {
+                request
+            } = handlerInput.requestEnvelope;
 
-        const CancelIntent = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'IntentRequest' && handlerInput.requestEnvelope.request
-                        .intent.name === 'AMAZON.CancelIntent';
-                },
-                handle(handlerInput) {
-                    const requestAttributes = handlerInput.attributesManager
-                        .getRequestAttributes();
-                    const speechOutput = requestAttributes.t(
-                        'CANCEL_MESSAGE');
+            return request.type === 'IntentRequest' && request.intent.name ===
+                'AMAZON.HelpIntent';
+        },
+        handle(handlerInput) {
+            const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
 
-                    return handlerInput.responseBuilder.speak(speechOutput)
-                        .getResponse();
-                },
-        };
+            const newGame = !(sessionAttributes.questions);
+            return helpTheUser(newGame, handlerInput);
+        },
+};
 
-        const NoIntent = {
-            canHandle(handlerInput) {
-                    return handlerInput.requestEnvelope.request.type ===
-                        'IntentRequest' && handlerInput.requestEnvelope.request
-                        .intent.name === 'AMAZON.NoIntent';
-                },
-                handle(handlerInput) {
-                    const requestAttributes = handlerInput.attributesManager
-                        .getRequestAttributes();
-                    const speechOutput = requestAttributes.t('NO_MESSAGE');
-                    return handlerInput.responseBuilder.speak(speechOutput)
-                        .getResponse();
-                },
-        };
+const UnhandledIntent = {
+    canHandle() {
+            return true;
+        },
+        handle(handlerInput) {
+            const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
+            const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            if (Object.keys(sessionAttributes).length === 0) {
+                const speechOutput = requestAttributes.t('START_UNHANDLED');
+                return handlerInput.attributesManager
+                    .speak(speechOutput)
+                    .reprompt(speechOutput)
+                    .getResponse();
+            } else if (sessionAttributes.questions) {
+                const speechOutput = requestAttributes.t('TRIVIA_UNHANDLED',
+                    ANSWER_COUNT.toString());
+                return handlerInput.attributesManager
+                    .speak(speechOutput)
+                    .reprompt(speechOutput)
+                    .getResponse();
+            }
+            const speechOutput = requestAttributes.t('HELP_UNHANDLED');
+            return handlerInput.attributesManager.speak(speechOutput).reprompt(
+                speechOutput).getResponse();
+        },
+};
 
-        const ErrorHandler = {
-            canHandle() {
-                    return true;
-                },
-                handle(handlerInput, error) {
-                    console.log(`Error handled: ${error.message}`);
+const SessionEndedRequest = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'SessionEndedRequest';
+        },
+        handle(handlerInput) {
+            console.log(
+                `Session ended with reason: ${handlerInput.requestEnvelope.request.reason}`
+            );
 
-                    return handlerInput.responseBuilder
-                        .speak(
-                            'Sorry, I can\'t understand the command. Please say again.'
-                        )
-                        .reprompt(
-                            'Sorry, I can\'t understand the command. Please say again.'
-                        )
-                        .getResponse();
-                },
-        };
+            return handlerInput.responseBuilder.getResponse();
+        },
+};
 
-        const skillBuilder = Alexa.SkillBuilders.custom();
-        exports.handler = skillBuilder
-            .addRequestHandlers(
-                LaunchRequest,
-                HelpIntent,
-                AnswerIntent,
-                RepeatIntent,
-                YesIntent,
-                StopIntent,
-                CancelIntent,
-                NoIntent,
-                SessionEndedRequest,
-                UnhandledIntent
-            )
-            .addRequestInterceptors(LocalizationInterceptor)
-            .addErrorHandlers(ErrorHandler)
-            .lambda();
+const AnswerIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && (handlerInput.requestEnvelope.request.intent
+                    .name === 'AnswerIntent' || handlerInput.requestEnvelope
+                    .request.intent.name === 'DontKnowIntent');
+        },
+        handle(handlerInput) {
+            if (handlerInput.requestEnvelope.request.intent.name ===
+                'AnswerIntent') {
+                return handleUserGuess(false, handlerInput);
+            }
+            return handleUserGuess(true, handlerInput);
+        },
+};
+
+const RepeatIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.RepeatIntent';
+        },
+        handle(handlerInput) {
+            const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
+            const currQIndex = sessionAttributes.currentQuestionIndex;
+            return handlerInput.responseBuilder
+                .addAudioPlayerPlayDirective(sessionAttributes.questions[
+                    currQIndex])
+                .speak(sessionAttributes.speechOutput)
+                .reprompt(sessionAttributes.repromptText)
+                .getResponse();
+        },
+};
+
+const YesIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.YesIntent';
+        },
+        async handle(handlerInput) {
+            const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
+            if (sessionAttributes.questions) {
+                return handlerInput.responseBuilder.speak(sessionAttributes
+                        .speechOutput)
+                    .reprompt(sessionAttributes.repromptText)
+                    .getResponse();
+            }
+            return startGame(false, handlerInput);
+        },
+};
+
+const StopIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.StopIntent';
+        },
+        handle(handlerInput) {
+            const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            const speechOutput = requestAttributes.t('STOP_MESSAGE');
+
+            return handlerInput.responseBuilder.speak(speechOutput)
+                .reprompt(speechOutput)
+                .getResponse();
+        },
+};
+
+const CancelIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.CancelIntent';
+        },
+        handle(handlerInput) {
+            const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            const speechOutput = requestAttributes.t('CANCEL_MESSAGE');
+
+            return handlerInput.responseBuilder.speak(speechOutput)
+                .getResponse();
+        },
+};
+
+const NoIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.NoIntent';
+        },
+        handle(handlerInput) {
+            const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            const speechOutput = requestAttributes.t('NO_MESSAGE');
+            return handlerInput.responseBuilder.speak(speechOutput).getResponse();
+        },
+};
+
+const ErrorHandler = {
+    canHandle() {
+            return true;
+        },
+        handle(handlerInput, error) {
+            console.log(`Error handled: ${error.message}`);
+
+            return handlerInput.responseBuilder
+                .speak(
+                    'Sorry, I can\'t understand the command. Please say again.'
+                )
+                .reprompt(
+                    'Sorry, I can\'t understand the command. Please say again.'
+                )
+                .getResponse();
+        },
+};
+
+const skillBuilder = Alexa.SkillBuilders.custom();
+exports.handler = skillBuilder
+    .addRequestHandlers(
+        LaunchRequest,
+        HelpIntent,
+        AnswerIntent,
+        RepeatIntent,
+        YesIntent,
+        StopIntent,
+        CancelIntent,
+        NoIntent,
+        SessionEndedRequest,
+        UnhandledIntent
+    )
+    .addRequestInterceptors(LocalizationInterceptor)
+    .addErrorHandlers(ErrorHandler)
+    .lambda();
