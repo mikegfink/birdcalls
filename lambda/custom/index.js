@@ -268,11 +268,13 @@ const LaunchRequest = {
         async handle(handlerInput) {
             // Need to await/async/promise
             //console.log("Input    :", handlerInput);
+            let errorString =
+                'Sorry, I couldn\'t generate questions for that area. Please say again.'
             const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
             let speechOutput = true ? requestAttributes.t(
                     'NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME')) +
                 requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString()) :
-                '';
+                errorString;
             var query = 'canada';
             var results;
             var quiz;
@@ -284,12 +286,12 @@ const LaunchRequest = {
                 method: 'GET',
                 //resolveWithFullResponse: true
             };
-            return handlerInput.responseBuilder
-                .speak('hi there')
-                .reprompt('reprompting')
-                .getResponse();
+            var spokenQuestion = '';
+            spokenQuestion =
+                //'https://s3.amazonaws.com/ask-soundlibrary/transportation/amzn_sfx_car_accelerate_01.mp3';
+                'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
             var req = await requestPromise(options)
-                .then(function(response) {
+                .then(async function(response) {
                     console.log('Received a response');
                     try {
                         results = JSON.parse(response);
@@ -300,8 +302,6 @@ const LaunchRequest = {
                         const currentQuestionIndex = 0;
                         var spokenQuestion = quiz.questions[
                             currentQuestionIndex];
-                        spokenQuestion =
-                            'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
                         let repromptText = requestAttributes.t(
                             'TELL_QUESTION_MESSAGE', '1');
                         speechOutput += repromptText;
@@ -313,9 +313,10 @@ const LaunchRequest = {
                             questions: gameQuestions,
                             score: 0,
                         });
-                        handlerInput.attributesManager.setSessionAttributes(
+                        await handlerInput.attributesManager.setSessionAttributes(
                             sessionAttributes);
-                        //console.log('speech', repromptText);
+                        speechOutput += 'change'
+                        console.log('speech', repromptText);
                         // playBehavior: interfaces.audioplayer.PlayBehavior,
                         // url: string, token: string,
                         // offsetInMilliseconds: number,
@@ -324,28 +325,26 @@ const LaunchRequest = {
                         // .addAudioPlayerPlayDirective("REPLACE_ALL",
                         // spokenQuestion, 'token', 0)
                     } catch (e) {
-                        return handlerInput.responseBuilder
-                            .speak(
-                                'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                            )
-                            .reprompt(
-                                'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                            )
-                            .getResponse();
+                        console.log(e);
+                        speechOutput = errorString;
                     }
                 })
                 .catch(function(error) {
                     console.log(error);
-                    return handlerInput.responseBuilder
-                        .speak(
-                            'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                        )
-                        .reprompt(
-                            'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                        )
-                        .getResponse();
+                    speechOutput = errorString;
                 });
+            console.log('About to return...');
+            //if (spokenQuestion) {
+            //    speechOutput += ' <audio src="' + spokenQuestion + '" />';
+            //}
+            return handlerInput.responseBuilder
+                .speak(speechOutput)
+                .addAudioPlayerPlayDirective("REPLACE_ALL",
+                    spokenQuestion, 'token', 0)
+                .reprompt('reprompting')
+                .getResponse();
         }
+
 };
 
 
