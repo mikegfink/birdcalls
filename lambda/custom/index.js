@@ -334,8 +334,9 @@ const LaunchRequest = {
 
             const gameQuestions = quiz.audioLinks;
             const currentQuestionIndex = 0;
-            var spokenQuestion = await getMp3RedirectUri(gameQuestions[
+            var mp3 = await getMp3RedirectUri(gameQuestions[
                 currentQuestionIndex]);
+            var spokenQuestion = 'Which bird is this?' + mp3;
             console.log('spoken question: ' + spokenQuestion);
 
             let repromptText = requestAttributes.t(
@@ -348,6 +349,7 @@ const LaunchRequest = {
                 currentQuestionIndex,
                 questions: gameQuestions,
                 answers: quiz.answers,
+                currentRecording: mp3,
                 score: 0,
             });
             await handlerInput.attributesManager.setSessionAttributes(
@@ -447,10 +449,13 @@ const RepeatIntent = {
         handle(handlerInput) {
             const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
             const currQIndex = sessionAttributes.currentQuestionIndex;
+            const sessionAttributes = attributesManager.getSessionAttributes();
+            const currentRecording = sessionAttributes.currentRecording;
             return handlerInput.responseBuilder
-                .addAudioPlayerPlayDirective(sessionAttributes.questions[
-                    currQIndex])
-                .speak(sessionAttributes.speechOutput)
+                .speak('Sure, here it is again')
+                .addAudioPlayerPlayDirective("REPLACE_ALL",
+                    currentRecording, 'token', 0)
+                //.speak(sessionAttributes.speechOutput)
                 .reprompt(sessionAttributes.repromptText)
                 .getResponse();
         },
