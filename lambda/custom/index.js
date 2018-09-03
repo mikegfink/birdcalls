@@ -23,17 +23,21 @@ function handleUserGuess(userGaveUp, handlerInput) {
     let speechOutputAnalysis = '';
 
     const sessionAttributes = attributesManager.getSessionAttributes();
+    console.log('sessionattr', sessionAttributes);
     const gameQuestions = sessionAttributes.questions;
     const gameAnswers = sessionAttributes.answers;
+    console.log('current question index');
     let currentScore = parseInt(sessionAttributes.score, 10);
     let currentQuestionIndex = parseInt(sessionAttributes.currentQuestionIndex,
         10);
-    const correctAnswerText = sessionAttributes.answers[currentQuestionIndex];
+    console.log('current question index', currentQuestionIndex);
+    const correctAnswerText = gameAnswers[currentQuestionIndex];
     const requestAttributes = attributesManager.getRequestAttributes();
     const translatedQuestions = requestAttributes.t('QUESTIONS');
 
     console.log(intent.slots.Answer.value);
-    if (intent.slots.Answer.value == gameAnswers[currentQuestionIndex]) {
+    if (intent.slots.Answer.value.toLowerCase() == gameAnswers[
+            currentQuestionIndex].toLowerCase()) {
         currentScore += 1;
         speechOutputAnalysis = requestAttributes.t('ANSWER_CORRECT_MESSAGE');
     } else {
@@ -248,10 +252,10 @@ function getQuiz(numQuestions, birdCallResults) {
     for (var i = 0; i < numRecordings; i++) {
         var index = getRandomInt(numRecordings);
         var recording = recordings[index];
-        var birdName = recording['en'];
+        var birdName = recording.en;
         if (quiz.answers.indexOf(birdName) == -1) {
             quiz.answers.push(birdName);
-            var audio = recording['file'];
+            var audio = recording.file;
             quiz.audioLinks.push(audio);
         }
         if (quiz.audioLinks.length >= GAME_LENGTH) {
@@ -312,9 +316,6 @@ const LaunchRequest = {
                 method: 'GET'
             };
             var spokenQuestion = '';
-            spokenQuestion =
-                //'https://s3.amazonaws.com/ask-soundlibrary/transportation/amzn_sfx_car_accelerate_01.mp3';
-                'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
 
             await httpsGetAsync(options,
                 function(response) {
@@ -353,6 +354,7 @@ const LaunchRequest = {
                 repromptText,
                 currentQuestionIndex,
                 questions: gameQuestions,
+                answers: quiz.answers,
                 score: 0,
             });
             await handlerInput.attributesManager.setSessionAttributes(
@@ -382,7 +384,7 @@ const LaunchRequest = {
                 .speak(speechOutput)
                 .addAudioPlayerPlayDirective("REPLACE_ALL",
                     spokenQuestion, 'token', 0)
-                .reprompt('reprompting')
+                .reprompt(repromptText)
                 .getResponse();
         }
 };
@@ -453,6 +455,7 @@ const AnswerIntent = {
                     .request.intent.name === 'DontKnowIntent');
         },
         handle(handlerInput) {
+            console.log('Answer intent?');
             if (handlerInput.requestEnvelope.request.intent.name ===
                 'AnswerIntent') {
                 return handleUserGuess(false, handlerInput);
