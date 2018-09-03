@@ -330,21 +330,11 @@ const LaunchRequest = {
 
             const gameQuestions = quiz.audioLinks;
             const currentQuestionIndex = 0;
-            var spokenQuestion = await getMp3RedirectUri(gameQuestions[
+            var mp3 = await getMp3RedirectUri(gameQuestions[
                 currentQuestionIndex]);
+            var spokenQuestion = 'Which bird is this?' + mp3;
             console.log('spoken question: ' + spokenQuestion);
 
-            // var req = await requestPromise(options)
-            //     .then(async function(response) {
-            //         try {
-            //             results = JSON.parse(response);
-            //             quiz = getQuiz(GAME_LENGTH, results);
-            //             console.log('quiz: ' + quiz);
-            //             // Nicole
-            //             const gameQuestions = quiz.questions;
-            //             const currentQuestionIndex = 0;
-            //             var spokenQuestion = gameQuestions[
-            //                 currentQuestionIndex];
             let repromptText = requestAttributes.t(
                 'TELL_QUESTION_MESSAGE', '1');
             speechOutput += repromptText;
@@ -355,31 +345,14 @@ const LaunchRequest = {
                 currentQuestionIndex,
                 questions: gameQuestions,
                 answers: quiz.answers,
+                currentRecording: mp3,
                 score: 0,
             });
             await handlerInput.attributesManager.setSessionAttributes(
                 sessionAttributes);
             console.log('speech', repromptText);
-            // playBehavior: interfaces.audioplayer.PlayBehavior,
-            // url: string, token: string,
-            // offsetInMilliseconds: number,
-            // expectedPreviousToken ? : string,
-            // audioItemMetadata ? : AudioItemMetadata)
-            // .addAudioPlayerPlayDirective("REPLACE_ALL",
-            // spokenQuestion, 'token', 0)
-            //     } catch (e) {
-            //         console.log(e);
-            //         speechOutput = errorString;
-            //     }
-            // })
-            // .catch(function(error) {
-            //     console.log(error);
-            //     speechOutput = errorString;
-            // });
             console.log('About to return...');
-            //if (spokenQuestion) {
-            //    speechOutput += ' <audio src="' + spokenQuestion + '" />';
-            //}
+
             return handlerInput.responseBuilder
                 .speak(speechOutput)
                 .addAudioPlayerPlayDirective("REPLACE_ALL",
@@ -471,12 +444,14 @@ const RepeatIntent = {
                 .name === 'AMAZON.RepeatIntent';
         },
         handle(handlerInput) {
-            const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
-            const currQIndex = sessionAttributes.currentQuestionIndex;
+            console.log('Inside repeat intent');
+            const sessionAttributes = attributesManager.getSessionAttributes();
+            const currentRecording = sessionAttributes.currentRecording;
             return handlerInput.responseBuilder
-                .addAudioPlayerPlayDirective(sessionAttributes.questions[
-                    currQIndex])
-                .speak(sessionAttributes.speechOutput)
+                .speak('Sure, here it is again')
+                .addAudioPlayerPlayDirective("REPLACE_ALL",
+                    currentRecording, 'token', 0)
+                //.speak(sessionAttributes.speechOutput)
                 .reprompt(sessionAttributes.repromptText)
                 .getResponse();
         },
