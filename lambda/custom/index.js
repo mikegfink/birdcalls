@@ -36,8 +36,7 @@ function handleUserGuess(userGaveUp, handlerInput) {
     const translatedQuestions = requestAttributes.t('QUESTIONS');
 
     console.log(intent.slots.Answer.value);
-    if (intent.slots.Answer.value.toLowerCase() == gameAnswers[
-            currentQuestionIndex].toLowerCase()) {
+    if (intent.slots.Answer.value == gameAnswers[currentQuestionIndex].toLowerCase()) {
         currentScore += 1;
         speechOutputAnalysis = requestAttributes.t('ANSWER_CORRECT_MESSAGE');
     } else {
@@ -76,6 +75,7 @@ function handleUserGuess(userGaveUp, handlerInput) {
     speechOutput += userGaveUp ? '' : requestAttributes.t('ANSWER_IS_MESSAGE');
     speechOutput += speechOutputAnalysis + requestAttributes.t(
         'SCORE_IS_MESSAGE', currentScore.toString()) + repromptText;
+    repromptText += requestAttributes.t('REPEAT_QUESTION_MESSAGE');
 
     Object.assign(sessionAttributes, {
         speechOutput: repromptText,
@@ -86,6 +86,8 @@ function handleUserGuess(userGaveUp, handlerInput) {
     });
 
     return responseBuilder.speak(speechOutput)
+        .addAudioPlayerPlayDirective("REPLACE_ALL",
+            spokenQuestion, 'token', 0)
         .reprompt(repromptText)
         .withSimpleCard(requestAttributes.t('GAME_NAME'), repromptText)
         .getResponse();
@@ -199,16 +201,18 @@ const languageString = {
             STOP_MESSAGE: 'Would you like to keep playing?',
             CANCEL_MESSAGE: 'Ok, let\'s play again soon.',
             NO_MESSAGE: 'Ok, we\'ll play another time. Goodbye!',
-            TRIVIA_UNHANDLED: 'Try saying a number between 1 and %s',
-            HELP_UNHANDLED: 'Say yes to continue, or no to end the game.',
-            START_UNHANDLED: 'Say start to start a new game.',
+            UNHANDLED_MESSAGE: 'Sorry, that command is not supported.',
+            TRIVIA_UNHANDLED: 'Try saying the name of a bird',
+            HELP_UNHANDLED: 'Say yes to continue, or no to end the game. ',
+            START_UNHANDLED: 'Say start to start a new game. ',
             NEW_GAME_MESSAGE: 'Welcome to %s. ',
-            WELCOME_MESSAGE: 'I will ask you %s questions, try to get as many right as you can. Just say the number of the answer. Let\'s begin. ',
+            WELCOME_MESSAGE: 'I will ask you %s questions, try to get as many right as you can. Just say the name of the bird. Let\'s begin. ',
             ANSWER_CORRECT_MESSAGE: 'correct. ',
             ANSWER_WRONG_MESSAGE: 'wrong. ',
             CORRECT_ANSWER_MESSAGE: 'The correct answer is %s: %s. ',
             ANSWER_IS_MESSAGE: 'That answer is ',
-            TELL_QUESTION_MESSAGE: 'Question %s.',
+            TELL_QUESTION_MESSAGE: 'This is bird %s. ',
+            REPEAT_QUESTION_MESSAGE: 'Ask me to repeat the song to hear it again. ',
             GAME_OVER_MESSAGE: 'You got %s out of %s questions correct. Thank you for playing!',
             SCORE_IS_MESSAGE: 'Your score is %s. '
         },
@@ -247,7 +251,7 @@ function getQuiz(numQuestions, birdCallResults) {
         audioLinks: [],
         answers: []
     };
-    var recordings = birdCallResults['recordings'];
+    var recordings = birdCallResults.recordings;
     const numRecordings = recordings.length;
     for (var i = 0; i < numRecordings; i++) {
         var index = getRandomInt(numRecordings);
@@ -263,7 +267,7 @@ function getQuiz(numQuestions, birdCallResults) {
         }
     }
     if (quiz.audioLinks.length < GAME_LENGTH) {
-        throw ("Not enough recordings.")
+        throw ("Not enough recordings.");
     }
 
     console.log("quiz.audiolinks:", quiz.audioLinks);
@@ -284,7 +288,7 @@ async function getMp3RedirectUri(audioLink) {
             mp3 = response.request.uri.href;
         });
     return mp3;
-};
+}
 
 const LaunchRequest = {
     canHandle(handlerInput) {
@@ -300,7 +304,7 @@ const LaunchRequest = {
             // Need to await/async/promise
             //console.log("Input    :", handlerInput);
             let errorString =
-                'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                'Sorry, I couldn\'t generate questions for that area. Please say again.';
             const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
             let speechOutput = true ? requestAttributes.t(
                     'NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME')) +
@@ -334,17 +338,6 @@ const LaunchRequest = {
                 currentQuestionIndex]);
             console.log('spoken question: ' + spokenQuestion);
 
-            // var req = await requestPromise(options)
-            //     .then(async function(response) {
-            //         try {
-            //             results = JSON.parse(response);
-            //             quiz = getQuiz(GAME_LENGTH, results);
-            //             console.log('quiz: ' + quiz);
-            //             // Nicole
-            //             const gameQuestions = quiz.questions;
-            //             const currentQuestionIndex = 0;
-            //             var spokenQuestion = gameQuestions[
-            //                 currentQuestionIndex];
             let repromptText = requestAttributes.t(
                 'TELL_QUESTION_MESSAGE', '1');
             speechOutput += repromptText;
@@ -359,27 +352,6 @@ const LaunchRequest = {
             });
             await handlerInput.attributesManager.setSessionAttributes(
                 sessionAttributes);
-            console.log('speech', repromptText);
-            // playBehavior: interfaces.audioplayer.PlayBehavior,
-            // url: string, token: string,
-            // offsetInMilliseconds: number,
-            // expectedPreviousToken ? : string,
-            // audioItemMetadata ? : AudioItemMetadata)
-            // .addAudioPlayerPlayDirective("REPLACE_ALL",
-            // spokenQuestion, 'token', 0)
-            //     } catch (e) {
-            //         console.log(e);
-            //         speechOutput = errorString;
-            //     }
-            // })
-            // .catch(function(error) {
-            //     console.log(error);
-            //     speechOutput = errorString;
-            // });
-            console.log('About to return...');
-            //if (spokenQuestion) {
-            //    speechOutput += ' <audio src="' + spokenQuestion + '" />';
-            //}
             return handlerInput.responseBuilder
                 .speak(speechOutput)
                 .addAudioPlayerPlayDirective("REPLACE_ALL",
@@ -443,7 +415,9 @@ const SessionEndedRequest = {
                 `Session ended with reason: ${handlerInput.requestEnvelope.request.reason}`
             );
 
-            return handlerInput.responseBuilder.getResponse();
+            return handlerInput.responseBuilder
+                .addAudioPlayerStopDirective()
+                .getResponse();
         },
 };
 
@@ -511,6 +485,7 @@ const StopIntent = {
             const speechOutput = requestAttributes.t('STOP_MESSAGE');
 
             return handlerInput.responseBuilder.speak(speechOutput)
+                .addAudioPlayerStopDirective()
                 .reprompt(speechOutput)
                 .getResponse();
         },
@@ -527,6 +502,31 @@ const CancelIntent = {
             const speechOutput = requestAttributes.t('CANCEL_MESSAGE');
 
             return handlerInput.responseBuilder.speak(speechOutput)
+                .addAudioPlayerStopDirective()
+                .getResponse();
+        },
+};
+
+const PauseIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.PauseIntent';
+        },
+        handle(handlerInput) {
+            return handlerInput.responseBuilder.addAudioPlayerStopDirective()
+                .getResponse();
+        },
+};
+
+const ResumeIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' && handlerInput.requestEnvelope.request.intent
+                .name === 'AMAZON.CancelIntent';
+        },
+        handle(handlerInput) {
+            return handlerInput.responseBuilder.addAudioPlayerStopDirective()
                 .getResponse();
         },
 };
@@ -540,7 +540,9 @@ const NoIntent = {
         handle(handlerInput) {
             const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
             const speechOutput = requestAttributes.t('NO_MESSAGE');
-            return handlerInput.responseBuilder.speak(speechOutput).getResponse();
+            return handlerInput.responseBuilder.speak(speechOutput)
+                .addAudioPlayerStopDirective()
+                .getResponse();
         },
 };
 
@@ -562,6 +564,31 @@ const ErrorHandler = {
         },
 };
 
+const UnsupportedIntent = {
+    canHandle(handlerInput) {
+            return handlerInput.requestEnvelope.request.type ===
+                'IntentRequest' &&
+                (handlerInput.requestEnvelope.request.intent.name ===
+                    'AMAZON.ShuffleOnIntent' ||
+                    handlerInput.requestEnvelope.request.intent.name ===
+                    'AMAZON.ShuffleOffIntent' ||
+                    handlerInput.requestEnvelope.request.intent.name ===
+                    'AMAZON.LoopOnIntent' ||
+                    handlerInput.requestEnvelope.request.intent.name ===
+                    'AMAZON.LoopOffIntent' ||
+                    handlerInput.requestEnvelope.request.intent.name ===
+                    'AMAZON.NextIntent' ||
+                    handlerInput.requestEnvelope.request.intent.name ===
+                    'AMAZON.PreviousIntent');
+        },
+        handle(handlerInput) {
+            const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            const speechOutput = requestAttributes.t('UNHANDLED_MESSAGE');
+            return handlerInput.responseBuilder.speak(unsupportedOutput)
+                .getResponse();
+        },
+};
+
 const skillBuilder = Alexa.SkillBuilders.custom();
 exports.handler = skillBuilder
     .addRequestHandlers(
@@ -573,6 +600,10 @@ exports.handler = skillBuilder
         StopIntent,
         CancelIntent,
         NoIntent,
+        PauseIntent,
+        ResumeIntent,
+        CancelIntent,
+        UnsupportedIntent,
         SessionEndedRequest,
         UnhandledIntent
     )
