@@ -315,7 +315,6 @@ const LaunchRequest = {
                         });
                         await handlerInput.attributesManager.setSessionAttributes(
                             sessionAttributes);
-                        speechOutput += 'change'
                         console.log('speech', repromptText);
                         // playBehavior: interfaces.audioplayer.PlayBehavior,
                         // url: string, token: string,
