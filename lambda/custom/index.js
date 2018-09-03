@@ -265,14 +265,14 @@ const LaunchRequest = {
                 'IntentRequest' && request.intent.name ===
                 'AMAZON.StartOverIntent');
         },
-        async handle() { //handlerInput) {
+        async handle(handlerInput) {
             // Need to await/async/promise
             //console.log("Input    :", handlerInput);
-            // const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
-            // let speechOutput = true ? requestAttributes.t(
-            // 'NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME')) +
-            // requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString()) :
-            // '';
+            const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
+            let speechOutput = true ? requestAttributes.t(
+                    'NEW_GAME_MESSAGE', requestAttributes.t('GAME_NAME')) +
+                requestAttributes.t('WELCOME_MESSAGE', GAME_LENGTH.toString()) :
+                '';
             var query = 'canada';
             var results;
             var quiz;
@@ -282,48 +282,47 @@ const LaunchRequest = {
                 uri: 'https://www.xeno-canto.org/api/2/recordings?query=q%3Aa+type%3Asong+cnt%3A' +
                     encodeURIComponent(query),
                 method: 'GET',
-                resolveWithFullResponse: true
+                //resolveWithFullResponse: true
             };
-
-            var req = requestPromise(options)
+            return handlerInput.responseBuilder
+                .speak('hi there')
+                .reprompt('reprompting')
+                .getResponse();
+            var req = await requestPromise(options)
                 .then(function(response) {
-                        console.log(response)
-                        try {
-                            results = JSON.parse(response);
-                            quiz = getQuiz(GAME_LENGTH, results);
-                            console.log('quiz: ' + quiz);
-                            // Nicole
-                            const gameQuestions = quiz.questions;
-                            const currentQuestionIndex = 0;
-                            var spokenQuestion = quiz.questions[
-                                currentQuestionIndex];
-                            let repromptText = requestAttributes.t(
-                                'TELL_QUESTION_MESSAGE', '1');
-                            speechOutput += repromptText;
-                            const sessionAttributes = {};
-                            Object.assign(sessionAttributes, {
-                                speechOutput: repromptText,
-                                repromptText,
-                                currentQuestionIndex,
-                                questions: gameQuestions,
-                                score: 0,
-                            });
-                            handlerInput.attributesManager.setSessionAttributes(
-                                sessionAttributes);
-                            console.log('speech', repromptText);
-                            spokenQuestion =
-                                'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
-                            return handlerInput.responseBuilder
-                                .speak('hi there')
-                                .reprompt('reprompting')
-                            playBehavior: interfaces.audioplayer.PlayBehavior,
-                                url: string, token: string,
-                                offsetInMilliseconds: number,
-                                expectedPreviousToken ? : string,
-                                audioItemMetadata ? : AudioItemMetadata)
-                        .addAudioPlayerPlayDirective("REPLACE_ALL",
-                                spokenQuestion, 'token', 0)
-                            .getResponse();
+                    console.log('Received a response');
+                    try {
+                        results = JSON.parse(response);
+                        quiz = getQuiz(GAME_LENGTH, results);
+                        console.log('quiz: ' + quiz);
+                        // Nicole
+                        const gameQuestions = quiz.questions;
+                        const currentQuestionIndex = 0;
+                        var spokenQuestion = quiz.questions[
+                            currentQuestionIndex];
+                        spokenQuestion =
+                            'https://www.xeno-canto.org/sounds/uploaded/WOPIRNCCSX/XC294012-Godmanchester-2015-07-05-09h53%20LS115555.mp3';
+                        let repromptText = requestAttributes.t(
+                            'TELL_QUESTION_MESSAGE', '1');
+                        speechOutput += repromptText;
+                        const sessionAttributes = {};
+                        Object.assign(sessionAttributes, {
+                            speechOutput: repromptText,
+                            repromptText,
+                            currentQuestionIndex,
+                            questions: gameQuestions,
+                            score: 0,
+                        });
+                        handlerInput.attributesManager.setSessionAttributes(
+                            sessionAttributes);
+                        //console.log('speech', repromptText);
+                        // playBehavior: interfaces.audioplayer.PlayBehavior,
+                        // url: string, token: string,
+                        // offsetInMilliseconds: number,
+                        // expectedPreviousToken ? : string,
+                        // audioItemMetadata ? : AudioItemMetadata)
+                        // .addAudioPlayerPlayDirective("REPLACE_ALL",
+                        // spokenQuestion, 'token', 0)
                     } catch (e) {
                         return handlerInput.responseBuilder
                             .speak(
@@ -335,18 +334,18 @@ const LaunchRequest = {
                             .getResponse();
                     }
                 })
-        .catch(function(error) {
-            console.log(error);
-            return handlerInput.responseBuilder
-                .speak(
-                    'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                )
-                .reprompt(
-                    'Sorry, I couldn\'t generate questions for that area. Please say again.'
-                )
-                .getResponse();
-        });
-}
+                .catch(function(error) {
+                    console.log(error);
+                    return handlerInput.responseBuilder
+                        .speak(
+                            'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                        )
+                        .reprompt(
+                            'Sorry, I couldn\'t generate questions for that area. Please say again.'
+                        )
+                        .getResponse();
+                });
+        }
 };
 
 
