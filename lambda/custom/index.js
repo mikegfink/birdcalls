@@ -447,9 +447,8 @@ const RepeatIntent = {
                 .name === 'AMAZON.RepeatIntent';
         },
         handle(handlerInput) {
+            console.log('Inside repeat intent');
             const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
-            const currQIndex = sessionAttributes.currentQuestionIndex;
-            const sessionAttributes = attributesManager.getSessionAttributes();
             const currentRecording = sessionAttributes.currentRecording;
             return handlerInput.responseBuilder
                 .speak('Sure, here it is again')
